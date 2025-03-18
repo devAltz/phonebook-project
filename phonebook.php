@@ -29,9 +29,26 @@ if (isset($_POST['add'])) {
 
     if ($conn->query($sql) === TRUE) {
         $message = "<div class='message success add'>New contact added successfully.</div>";
-        // Redirect to clear the URL parameters
         header("Location: " . $_SERVER['PHP_SELF'] . "?status=added");
         exit;
+    } else {
+        $message = "<div class='message error'>Error: " . $conn->error . "</div>";
+    }
+}
+
+// Edit a contact
+if (isset($_POST['edit'])) {
+    $id = $_POST['id'];
+    $name = $_POST['name'];
+    $phone_number = $_POST['phone_number'];
+    $address = $_POST['address'];
+    $email = $_POST['email'];
+
+    // Update contact in the database
+    $sql = "UPDATE contacts SET name='$name', phone_number='$phone_number', address='$address', email='$email' WHERE id=$id";
+
+    if ($conn->query($sql) === TRUE) {
+        $message = "<div class='message success'>Contact updated successfully.</div>";
     } else {
         $message = "<div class='message error'>Error: " . $conn->error . "</div>";
     }
@@ -45,20 +62,10 @@ if (isset($_GET['delete_id'])) {
     $sql = "DELETE FROM contacts WHERE id=$id";
 
     if ($conn->query($sql) === TRUE) {
-        // Redirect to clear the URL parameters
         header("Location: " . $_SERVER['PHP_SELF'] . "?status=deleted");
         exit;
     } else {
         $message = "<div class='message error'>Error: " . $conn->error . "</div>";
-    }
-}
-
-// Handle status messages
-if (isset($_GET['status'])) {
-    if ($_GET['status'] == 'added') {
-        $message = "<div class='message success add'>New contact added successfully.</div>";
-    } else if ($_GET['status'] == 'deleted') {
-        $message = "<div class='message success delete'>Contact deleted successfully.</div>";
     }
 }
 
@@ -67,7 +74,6 @@ $search_results = [];
 if (isset($_POST['search'])) {
     $search = $_POST['search_term'];
 
-    // Search for contacts in the database
     $sql = "SELECT * FROM contacts WHERE name LIKE '%$search%'";
     $result = $conn->query($sql);
 
@@ -75,15 +81,11 @@ if (isset($_POST['search'])) {
         while ($row = $result->fetch_assoc()) {
             $search_results[] = $row;
         }
-        $message = "<div class='message success search'>Search results found.</div>";
+        $message = "<div class='message success'>Search results found.</div>";
     } else {
         $message = "<div class='message error'>No contacts found matching your search.</div>";
     }
 }
-
-// Retrieve all contacts
-$sql = "SELECT * FROM contacts";
-$contacts = $conn->query($sql);
 ?>
 
 <!DOCTYPE html>
@@ -132,13 +134,8 @@ $contacts = $conn->query($sql);
             border-radius: 4px;
         }
 
-        .message.success.add {
+        .message.success {
             color: green;
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-        }
-        .message.success.delete {
-            color: red;
             background-color: #d4edda;
             border: 1px solid #c3e6cb;
         }
@@ -147,12 +144,6 @@ $contacts = $conn->query($sql);
             color: red;
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
-        }
-
-        .message.search {
-            color: blue;
-            background-color: #cce5ff;
-            border: 1px solid #b8daff;
         }
 
         /* Form Styles */
@@ -190,16 +181,49 @@ $contacts = $conn->query($sql);
             background-color: #2980b9;
         }
 
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 4px;
+            width: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
         /* Contact List Styles */
         .contact-container {
             margin-top: 20px;
         }
 
         .contact-list {
-            display: none; /* Hidden by default */
-        }
-
-        .contact-list.grid-view {
             display: flex;
             flex-wrap: wrap;
             gap: 15px;
@@ -212,10 +236,6 @@ $contacts = $conn->query($sql);
             width: calc(33.33% - 10px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 15px;
-        }
-
-        .contact-info {
-            margin-bottom: 10px;
         }
 
         .contact-actions {
@@ -231,68 +251,7 @@ $contacts = $conn->query($sql);
         a:hover {
             color: #c0392b;
         }
-
-        .search-container {
-            margin-top: 30px;
-        }
-
-        .search-results {
-            margin-top: 20px;
-        }
-
-        .search-results.grid-view {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .no-results {
-            color: #e74c3c;
-            font-style: italic;
-        }
-
-        /* View Controls */
-        .view-controls {
-            margin: 20px 0;
-        }
-
-        @media (max-width: 768px) {
-            .contact-card {
-                width: calc(50% - 10px);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .contact-card {
-                width: 100%;
-            }
-        }
     </style>
-    <script>
-        // JavaScript to toggle contact list visibility
-        function toggleContacts() {
-            var contactList = document.getElementById('contact-list');
-            if (contactList.style.display === 'none' || contactList.style.display === '') {
-                contactList.style.display = 'flex';
-                contactList.classList.add('grid-view');
-            } else {
-                contactList.style.display = 'none';
-                contactList.classList.remove('grid-view');
-            }
-        }
-
-        // JavaScript to automatically clear URL parameters after displaying message
-        window.onload = function() {
-            // Check if there's a status parameter in the URL
-            if (window.location.search.includes('status=')) {
-                // After 5 seconds, replace the URL without the parameters
-                setTimeout(function() {
-                    var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                    window.history.replaceState({path: newUrl}, '', newUrl);
-                }, 5000);
-            }
-        };
-    </script>
 </head>
 <body>
     <div class="container">
@@ -317,65 +276,86 @@ $contacts = $conn->query($sql);
             <button type="submit" name="add">Add Contact</button>
         </form>
 
-        <!-- View All Contacts -->
-        <div class="contact-container">
-            <h2>All Contacts</h2>
-            <div class="view-controls">
-                <button onclick="toggleContacts()">Show/Hide Contacts</button>
-            </div>
-            
-            <div id="contact-list" class="contact-list">
-                <?php while ($contact = $contacts->fetch_assoc()): ?>
-                    <div class="contact-card">
-                        <div class="contact-info">
-                            <p><strong>Name:</strong> <?php echo $contact['name']; ?></p>
-                            <p><strong>Phone:</strong> <?php echo $contact['phone_number']; ?></p>
-                            <p><strong>Address:</strong> <?php echo $contact['address']; ?></p>
-                            <p><strong>Email:</strong> <?php echo $contact['email']; ?></p>
-                        </div>
-                        <div class="contact-actions">
-                            <a href="?delete_id=<?php echo $contact['id']; ?>">Delete</a>
-                        </div>
-                    </div>
-                <?php endwhile; ?>
-            </div>
-        </div>
-
         <!-- Search Contacts -->
         <div class="search-container">
             <h2>Search for a Contact</h2>
             <form action="" method="POST">
-                <label>Search by Name:</label><br>
+                <label>Search by Name:</label>
                 <input type="text" name="search_term" required><br><br>
                 <button type="submit" name="search">Search</button>
             </form>
+        </div>
 
-            <?php if (isset($_POST['search'])): ?>
-                <div class="search-results">
-                    <h3>Search Results:</h3>
-                    <?php if (count($search_results) > 0): ?>
-                        <div class="grid-view">
-                            <?php foreach ($search_results as $result): ?>
-                                <div class="contact-card">
-                                    <div class="contact-info">
-                                        <p><strong>Name:</strong> <?php echo $result['name']; ?></p>
-                                        <p><strong>Phone:</strong> <?php echo $result['phone_number']; ?></p>
-                                        <p><strong>Address:</strong> <?php echo $result['address']; ?></p>
-                                        <p><strong>Email:</strong> <?php echo $result['email']; ?></p>
-                                    </div>
-                                    <div class="contact-actions">
-                                        <a href="?delete_id=<?php echo $result['id']; ?>">Delete</a>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="no-results">No results found.</p>
-                    <?php endif; ?>
+        <!-- Display the Contact List only when search results are present -->
+        <?php if (!empty($search_results)): ?>
+        <div class="contact-container">
+            <h2>Contact List</h2>
+
+            <!-- Display Contacts -->
+            <div class="contact-list">
+                <?php foreach ($search_results as $row): ?>
+                <div class="contact-card">
+                    <div class="contact-info">
+                        <p><strong>Name:</strong> <?php echo $row['name']; ?></p>
+                        <p><strong>Phone:</strong> <?php echo $row['phone_number']; ?></p>
+                        <p><strong>Address:</strong> <?php echo $row['address']; ?></p>
+                        <p><strong>Email:</strong> <?php echo $row['email']; ?></p>
+                    </div>
+                    <div class="contact-actions">
+                        <!-- Edit Button Trigger -->
+                        <button onclick="openModal(<?php echo $row['id']; ?>, '<?php echo $row['name']; ?>', '<?php echo $row['phone_number']; ?>', '<?php echo $row['address']; ?>', '<?php echo $row['email']; ?>')">Edit</button>
+                        <a href="javascript:void(0);" onclick="confirmDelete(<?php echo $row['id']; ?>)">Delete</a>
+                    </div>
                 </div>
-            <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Modal for Editing Contact -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>Edit Contact</h2>
+                <form method="POST">
+                    <input type="hidden" name="id" id="contactId">
+                    <label>Name:</label>
+                    <input type="text" name="name" id="editName" required><br>
+                    <label>Phone:</label>
+                    <input type="text" name="phone_number" id="editPhone" required><br>
+                    <label>Address:</label>
+                    <input type="text" name="address" id="editAddress" required><br>
+                    <label>Email:</label>
+                    <input type="email" name="email" id="editEmail" required><br><br>
+                    <button type="submit" name="edit">Update Contact</button>
+                </form>
+            </div>
         </div>
     </div>
+
+    <script>
+        // Open the modal and pre-fill the form with the current data
+        function openModal(id, name, phone, address, email) {
+            document.getElementById("contactId").value = id;
+            document.getElementById("editName").value = name;
+            document.getElementById("editPhone").value = phone;
+            document.getElementById("editAddress").value = address;
+            document.getElementById("editEmail").value = email;
+            document.getElementById("editModal").style.display = "block";
+        }
+
+        // Close the modal
+        function closeModal() {
+            document.getElementById("editModal").style.display = "none";
+        }
+
+        // JavaScript to confirm deletion
+        function confirmDelete(id) {
+            if (confirm("Are you sure you want to delete this contact?")) {
+                window.location.href = "?delete_id=" + id;
+            }
+        }
+    </script>
 </body>
 </html>
 
